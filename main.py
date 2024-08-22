@@ -236,36 +236,35 @@ train_set, test_set = random_split(dataset, [train_size, test_size])
 train_loader = DataLoader(train_set, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
 
-# Define the CNN model
 class CNNModel(nn.Module):
     def __init__(self, num_classes):
         super(CNNModel, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),  # Added Batch Normalization
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),  # Added Batch Normalization
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),  # Added Batch Normalization
+            nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
         flattened_size = self._get_flattened_size()
         self.classifier = nn.Sequential(
-            nn.Dropout(0.5),  # Increased Dropout
+            nn.Dropout(0.5),
             nn.Linear(flattened_size, 512),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5),  # Increased Dropout
+            nn.Dropout(0.5),
             nn.Linear(512, num_classes)
         )
 
     def _get_flattened_size(self):
         with torch.no_grad():
-            dummy_input = torch.randn(1, 3, 224, 224)
+            dummy_input = torch.randn(1, 3, 128, 128)  # Match the input image size
             output = self.features(dummy_input)
             return output.view(-1).size(0)
     

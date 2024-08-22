@@ -215,9 +215,9 @@ class FoodDataset(Dataset):
 
 # Transformations
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),
+    transforms.RandomResizedCrop(128),
+    transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 root_dir = 'fruitveg/train'
@@ -242,27 +242,28 @@ class CNNModel(nn.Module):
         super(CNNModel, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),  # Added Batch Normalization
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),  # Added Batch Normalization
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),  # Added Batch Normalization
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
-        # Use the flattened_size calculated earlier
         flattened_size = self._get_flattened_size()
         self.classifier = nn.Sequential(
-            nn.Dropout(),
+            nn.Dropout(0.5),  # Increased Dropout
             nn.Linear(flattened_size, 512),
             nn.ReLU(inplace=True),
-            nn.Dropout(),
+            nn.Dropout(0.5),  # Increased Dropout
             nn.Linear(512, num_classes)
         )
 
     def _get_flattened_size(self):
-        # Calculate the flattened size of the output from the feature extractor
         with torch.no_grad():
             dummy_input = torch.randn(1, 3, 224, 224)
             output = self.features(dummy_input)
@@ -285,6 +286,7 @@ print(f'Unique labels in dataset: {set(dataset.labels)}')
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)  # Added LR Scheduler
 num_epochs = 25
 
 # Lists to store training and validation metrics
@@ -333,6 +335,9 @@ for epoch in range(num_epochs):
     val_loss_history.append(val_loss)
     val_acc_history.append(val_acc.item())
     
+    # Step the learning rate scheduler
+    scheduler.step()
+
     print(f'Epoch {epoch+1}/{num_epochs}, '
           f'Train Loss: {epoch_loss:.4f}, Train Acc: {epoch_acc:.4f}, '
           f'Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}')
@@ -366,27 +371,27 @@ plt.title('Training and Validation Loss')
 plt.tight_layout()
 plt.show()
 
-def predict_image(image_path, model, transform):
-    image = Image.open(image_path).convert("RGB")
-    image = transform(image).unsqueeze(0)  # Add batch dimension
-    model.eval()  # Set the model to evaluation mode
-    with torch.no_grad():  # Disable gradient calculation
-        output = model(image)
-        _, predicted = torch.max(output.data, 1)
-    return predicted.item()  # Return the class index as an integer
+# def predict_image(image_path, model, transform):
+#     image = Image.open(image_path).convert("RGB")
+#     image = transform(image).unsqueeze(0)  # Add batch dimension
+#     model.eval()  # Set the model to evaluation mode
+#     with torch.no_grad():  # Disable gradient calculation
+#         output = model(image)
+#         _, predicted = torch.max(output.data, 1)
+#     return predicted.item()  # Return the class index as an integer
 
-# Predict on a sample image
-image_path = 'apple.png'
+# # Predict on a sample image
+# image_path = 'apple.jpeg'
 
-# Ensure model is on the correct device (e.g., GPU or CPU)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)
+# # Ensure model is on the correct device (e.g., GPU or CPU)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# model = model.to(device)
 
-# Load an image, apply the same transformations, and predict
-predicted_class = predict_image(image_path, model, transform)
-print(f'Predicted Class Index: {predicted_class}')
+# # Load an image, apply the same transformations, and predict
+# predicted_class = predict_image(image_path, model, transform)
+# print(f'Predicted Class Index: {predicted_class}')
 
-# Check if the predicted class index corresponds to the correct class name
-class_names = os.listdir('fruitveg/train')  # Get class names
-predicted_class_name = class_names[predicted_class]
-print(f'Predicted Class Name: {predicted_class_name}')
+# # Check if the predicted class index corresponds to the correct class name
+# class_names = os.listdir('fruitveg/train')  # Get class names
+# predicted_class_name = class_names[predicted_class]
+# print(f'Predicted Class Name: {predicted_class_name}')
